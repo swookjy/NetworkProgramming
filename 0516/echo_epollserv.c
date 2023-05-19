@@ -23,7 +23,7 @@ int main(int argc, char* argv[]){
     int str_len, i;
     char buf[BUF_SIZE];
 
-    struct epoll_event *epoll_events;
+    struct epoll_event *ep_events;
     struct epoll_event event;
     int epfd, event_cnt;
 
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
         error_handling("listen() error");
 
     epfd = epoll_create(EPOLL_SIZE);
-    epoll_events = malloc(sizeof(struct epoll_event)*EPOLL_SIZE);
+    ep_events = malloc(sizeof(struct epoll_event)*EPOLL_SIZE);
 
     event.events = EPOLLIN;
     event.data.fd = serv_sock;
@@ -54,13 +54,13 @@ int main(int argc, char* argv[]){
 
     while(1){
         event_cnt = epoll_wait(epfd, ep_events, EPOLL_SIZE, -1);
-        if(event_cnt == -1{
+        if(event_cnt == -1){
             puts("epoll_wait() error");
             break;
         }
 
         for(i=0; i<event_cnt; i++){
-            if(epoll_events[i].data.fd == serv_sock){
+            if(ep_events[i].data.fd == serv_sock){
                 adr_sz = sizeof(clnt_adr);
                 clnt_sock = accept(serv_sock, (struct sockaddr*)&clnt_adr, &adr_sz);
                 event.events = EPOLLIN;
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]){
                 str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);
                 if(str_len == 0){
                     epoll_ctl(epfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);
-                    close(epoll_events[i].data.fd);
+                    close(ep_events[i].data.fd);
                     printf("closed client: %d\n", ep_events[i].data.fd);
                 }
                 else{
