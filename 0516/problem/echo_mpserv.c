@@ -105,34 +105,23 @@ int main(int argc, char *argv[])
 
             //client에 이벤트 발생 : echo!
             else
-            {
-                //str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);
+            {               
+                fgets(buf, BUF_SIZE, readfp);   
                 
-                fgets(buf, BUF_SIZE, readfp);
-                printf("buf : %s\n", buf);
-
-                //if (str_len == 0)
                 if(!strcmp(buf,"q\n") || !strcmp(buf,"Q\n")){
                     printf("client disconnected...\n");
                     epoll_ctl(epfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);
-                    //close(ep_events[i].data.fd);
+                    
                     shutdown(fileno(writefp), SHUT_WR);
                     fgets(buf, BUF_SIZE, readfp);
                     fputs(buf, stdout);
                 }
-
                 else
                 {
-                    //write(ep_events[i].data.fd, buf, str_len);
                     fputs(buf, writefp);
                     fflush(writefp);
-                
                 }
-
-                
-                
             }
-            
         }
     }
     fclose(readfp);

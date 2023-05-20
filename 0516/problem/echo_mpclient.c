@@ -45,14 +45,14 @@ int main(int argc, char *argv[])
 	if(connect(sock, (struct sockaddr*)&serv_adr, sizeof(serv_adr))==-1)
 		error_handling("connect() error!");
 	else{
-		puts("Connected...........");
+		//puts("Connected...........");
     }
     readfp = fdopen(sock, "r");
     writefp = fdopen(sock, "w");
 	
 	while(1) 
 	{
-		fputs("Input message(Q to quit): ", stdout);
+		//fputs("Input message(Q to quit): ", stdout);
 		fgets(message, BUF_SIZE, stdin);
 		
 		if(!strcmp(message,"q\n") || !strcmp(message,"Q\n")){
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 			fflush(writefp);
 
 			sprintf(pid, "removed proc id : %d\n", getpid());
-			fputs(pid, writefp);                                //이것도 buf로 전달되네,,,,
+			fputs(pid, writefp);                           
     		fflush(writefp);
 
 			shutdown(fileno(writefp), SHUT_WR);
@@ -73,13 +73,6 @@ int main(int argc, char *argv[])
 		message[str_len]=0;
 		printf("Message from server: %s", message);
 	}
-
-    
-    //write(sock, pid, strlen(pid));
-    //fputs(pid, writefp);                                //이것도 buf로 전달되네,,,,
-    //fflush(writefp);
-    fputs(pid, stdout);
-	
 
 	fclose(readfp);
 	fclose(writefp);
