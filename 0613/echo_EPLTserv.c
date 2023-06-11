@@ -94,3 +94,5 @@ void error_handling(char *buf)
 	fputc('\n', stderr);
 	exit(1);
 }
+
+//okok
