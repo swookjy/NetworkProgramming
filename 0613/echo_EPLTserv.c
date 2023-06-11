@@ -9,7 +9,9 @@
 
 #define BUF_SIZE 4
 #define EPOLL_SIZE 50
+
 void error_handling(char *buf);
+
 
 int main(int argc, char *argv[])
 {
@@ -55,37 +57,34 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		puts("return epoll_wait");
-		for(i=0; i<event_cnt; i++)
-		{
-			if(ep_events[i].data.fd==serv_sock)
-			{
-				adr_sz=sizeof(clnt_adr);
-				clnt_sock=accept(serv_sock, (struct sockaddr*)&clnt_adr, &adr_sz);
-				event.events=EPOLLIN;
-				event.data.fd=clnt_sock;
-				epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event);
-				printf("connected client: %d \n", clnt_sock);
-			}
-			else
-			{
-					str_len=read(ep_events[i].data.fd, buf, BUF_SIZE);
-					if(str_len==0)    // close request!
-					{
-						epoll_ctl(epfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);
-						close(ep_events[i].data.fd);
-						printf("closed client: %d \n", ep_events[i].data.fd);
-					}
-					else
-					{
-						write(ep_events[i].data.fd, buf, str_len);    // echo!
-					}
-			}
-		}
-	}
-	close(serv_sock);
-	close(epfd);
-	return 0;
+        puts("return epoll_wait");
+        for(i=0; i<event_cnt; i++){
+            if(ep_events[i].data.fd == serv_sock){
+                adr_sz = sizeof(clnt_adr);
+                clnt_sock = accpet(serv_sock, (struct sockaddr*)&clnt_adr, &adr_sz);
+
+                event.events = EPOLLIN;
+                event.data.fd = clnt_sock;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event);
+                printf("connected client : %d\n", clnt_sock);
+            }
+            else{
+                str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);
+                if(str_len == 0){ // close request
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, ep_events[i].data.fd, NULL);
+                    close(ep_events[i].data.fd);//socket file descriptor
+                    printf("closed client : %d\n", ep_events[i].data.fd);
+                }
+                else{       // echo service
+                    write(ep_events[i].data.fd, buf, str_len);
+                }
+            }
+        }
+
+    }
+    close(serv_sock);
+    close(epfd);
+    return 0;
 }
 
 void error_handling(char *buf)
