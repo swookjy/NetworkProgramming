@@ -15,24 +15,24 @@ int main(int argc, char *argv[])
 	int str_len;
 	struct sockaddr_in serv_adr;
 
-	if(argc!=3) {
+	if(argc != 3) {
 		printf("Usage : %s <IP> <port>\n", argv[0]);
 		exit(1);
 	}
 	
-	sock=socket(PF_INET, SOCK_STREAM, 0);   
-	if(sock==-1)
+	sock = socket(PF_INET, SOCK_STREAM, 0);   
+	if(sock == -1)
 		error_handling("socket() error");
 	
 	memset(&serv_adr, 0, sizeof(serv_adr));
-	serv_adr.sin_family=AF_INET;
-	serv_adr.sin_addr.s_addr=inet_addr(argv[1]);
-	serv_adr.sin_port=htons(atoi(argv[2]));
+	serv_adr.sin_family = AF_INET;
+	serv_adr.sin_addr.s_addr = inet_addr(argv[1]);
+	serv_adr.sin_port = htons(atoi(argv[2]));
 	
-	if(connect(sock, (struct sockaddr*)&serv_adr, sizeof(serv_adr))==-1)
+	if(connect(sock, (struct sockaddr*)&serv_adr, sizeof(serv_adr)) == -1)
 		error_handling("connect() error!");
 	else
-		puts("Connected...........");
+		puts("Connected...");
 	
 	while(1) 
 	{
@@ -43,8 +43,12 @@ int main(int argc, char *argv[])
 			break;
 
 		write(sock, message, strlen(message));
-		str_len=read(sock, message, BUF_SIZE-1);
-		message[str_len]=0;
+		
+		//delay가 없으면, server에서 읽는 속도가 느려, 한번에 다 echo받지 못해 delay 추가하였음
+		sleep(1);
+
+		str_len = read(sock, message, BUF_SIZE-1);
+		message[str_len] = 0;
 		printf("Message from server: %s", message);
 	}
 	
