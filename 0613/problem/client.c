@@ -8,12 +8,16 @@
 	
 #define BUF_SIZE 100
 #define NAME_SIZE 20
+#define AGE_SIZE 4
+#define COUNTRY_SIZE 20
 	
 void *send_msg(void *arg);
 void *recv_msg(void *arg);
 void error_handling(char *msg);
 
 char name[NAME_SIZE] = "[DEFAULT]";
+char ages[AGE_SIZE] = {0, };
+char country[COUNTRY_SIZE] = {0, };
 char msg[BUF_SIZE];
 	
 int main(int argc, char *argv[]){
@@ -22,17 +26,26 @@ int main(int argc, char *argv[]){
 	pthread_t snd_thread, rcv_thread;
 	void *thread_return;
     char buf[BUF_SIZE];
+	int age;
 
-	if(argc != 4) {
-		printf("Usage : %s <IP> <port> <name>\n", argv[0]);
+	if(argc != 6) {
+		printf("Usage : %s <IP> <port> <name> <age> <country>\n", argv[0]);
 		exit(1);
 	 }
 	
     //user name
 	sprintf(name, "[%s]", argv[3]);
-	
-    //check user name unique
 
+	//user age
+	sprintf(ages, "%s", argv[4]);
+	if((age=atoi(ages)) == 0 ){
+		error_handling("Age input error");
+	}
+
+	//user country
+	sprintf(country, "%s", argv[5]);
+
+    //check user name unique
 	sock = socket(PF_INET, SOCK_STREAM, 0);
 	
 	memset(&serv_addr, 0, sizeof(serv_addr));
@@ -48,14 +61,18 @@ int main(int argc, char *argv[]){
     write(sock, name, strlen(name));
     
     //name 중복 검사 결과 수신
-    int k = read(sock, buf, sizeof(buf));
+    int k = read(sock, buf, sizeof(buf)-1);
     printf("%s", buf);
-    if(strcmp(buf, "welcome!") != 0){
+    if(strcmp(buf, "welcome!\n") != 0){
         close(sock);
         exit(1);
     }
-    
 
+	//부가 정보 전송(age, country)
+	write(sock, ages, strlen(ages));
+	write(sock, country, strlen(country));
+    
+	//thread management : 
 	pthread_create(&snd_thread, NULL, send_msg, (void*)&sock);
 	pthread_create(&rcv_thread, NULL, recv_msg, (void*)&sock);
 
