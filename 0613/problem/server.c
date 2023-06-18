@@ -13,11 +13,8 @@
 #define AGE_SIZE 4
 #define COUNTRY_SIZE 20
 
-
-//void *handle_clnt(void *arg);
 void *handle_in(void *arg);
 void *handle_out(void *arg);
-//void send_msg(char *msg, int len);
 void error_handling(char *msg);
 void free_naming();
 void GiveClientInfo(int requestclntfd, char* name);
@@ -30,10 +27,8 @@ char duplicated_name_msg[] = "A user with the same name already exists. Try anot
 //client로부터 수신한 메세지
 char msg[BUF_SIZE];
 int str_len = 0;
-
 //client로 전송할 메세지
 char echo_msg[BUF_SIZE];
-
 
 pthread_mutex_t mutx;
 
@@ -73,7 +68,6 @@ int main(int argc, char *argv[]){
 		char ages[AGE_SIZE] = {0, };
 		char country[COUNTRY_SIZE] = {0, };
 		char agree[1] = {0, };
-		
         unsigned int dup_flag = 0;
 
 		//client의 이름 수신
@@ -117,9 +111,7 @@ int main(int argc, char *argv[]){
 			agree[0] = '\0';
 			agree[0] = temp;
 			printf("%c\n", temp);
-			
-			//printf("%c", agreeflag);
-            
+			          
 			clnt_socks[clnt_cnt++] = clnt_sock;
 
 			char client_information[BUF_SIZE] = {0,};
@@ -143,7 +135,6 @@ int main(int argc, char *argv[]){
 	}
 
 	close(serv_sock);
-	//fclose(fp);
     free_naming();
 	return 0;
 }
@@ -164,10 +155,7 @@ void *handle_in(void *arg){
 		if(msg[0] == '[' && msg[msg_len-2] == ']'){
 			sprintf(request_info, "%d REQUEST INFORMATION ABOUT %s", clnt_sock ,msg);
 			msg[msg_len - 1] = '\0';
-			//printf("msg: %s", msg);
-			printf("%s", request_info);
 			strcpy(echo_msg, request_info);
-			
 			GiveClientInfo(clnt_sock, msg);
 		}
 		
@@ -198,7 +186,6 @@ void *handle_in(void *arg){
 }
 
 void *handle_out(void *arg){
-	//int clnt_sock = *((int*)arg);
 	while(1){
 		pthread_mutex_lock(&mutx);
 		if(str_len != 0){
@@ -233,9 +220,7 @@ void GiveClientInfo(int requestclntfd, char* req_name) {
     }
 	
 	char line[BUF_SIZE];
-	
-	// flag to find the name
-	int found = 0;
+	int found = 0; // flag to find the name
 
     while (fgets(line, sizeof(line), fp)) {
         int temp;
@@ -254,12 +239,6 @@ void GiveClientInfo(int requestclntfd, char* req_name) {
                 sprintf(client_information, "%s refused to disclose personal information\n", name);
             }
             else if (temp == 1) {
-                printf("Client %d information:\n", clnt_sock);
-                printf("Name: %s\n", name);
-                printf("Age: %s\n", ages);
-                printf("Country: %s\n", country);
-                printf("----------------------\n");
-
                 sprintf(client_information, "%c\t%d\t%s\t%s\t%s\n", temp, clnt_sock, name, ages, country);
             }
             write(requestclntfd, client_information, strlen(client_information));
