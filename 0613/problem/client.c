@@ -14,6 +14,7 @@
 void *send_msg(void *arg);
 void *recv_msg(void *arg);
 void error_handling(char *msg);
+int getAgree(int sock);
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char ages[AGE_SIZE] = {0, };
@@ -27,11 +28,12 @@ int main(int argc, char *argv[]){
 	void *thread_return;
     char buf[BUF_SIZE];
 	int age;
+	int agree = 0;
 
 	if(argc != 6) {
 		printf("Usage : %s <IP> <port> <name> <age> <country>\n", argv[0]);
 		exit(1);
-	 }
+	}
 	
     //user name
 	sprintf(name, "[%s]", argv[3]);
@@ -71,7 +73,10 @@ int main(int argc, char *argv[]){
 	//부가 정보 전송(age, country)
 	write(sock, ages, strlen(ages));
 	write(sock, country, strlen(country));
-    
+
+	//개인정보 제공 동의
+	agree = getAgree(sock);
+
 	//thread management : 
 	pthread_create(&snd_thread, NULL, send_msg, (void*)&sock);
 	pthread_create(&rcv_thread, NULL, recv_msg, (void*)&sock);
@@ -87,16 +92,26 @@ int main(int argc, char *argv[]){
 void *send_msg(void *arg){
 	int sock = *((int*)arg);
 	char name_msg[NAME_SIZE + BUF_SIZE];
-	
+		
 	while(1) {
+		//message 입력
 		fgets(msg, BUF_SIZE, stdin);
+		size_t msg_length = strlen(msg);
+
+		//1. 종료 요청
 		if(!strcmp(msg,"q\n")||!strcmp(msg,"Q\n")){
 			close(sock);
 			exit(0);
 		}
-		sprintf(name_msg,"%s %s", name, msg);
-        
-		write(sock, name_msg, strlen(name_msg));
+		//2. 정보 요청
+		if(msg[0] == '[' && msg[msg_length-2] == ']'){
+			write(sock, msg, msg_length);
+			printf("Asked information about %s", msg);
+		}
+		else{
+			sprintf(name_msg,"%s %s", name, msg);
+			write(sock, name_msg, strlen(name_msg));
+		}
 	}
 	return NULL;
 }
@@ -122,4 +137,34 @@ void error_handling(char *msg){
 	fputs(msg, stderr);
 	fputc('\n', stderr);
 	exit(1);
+}
+
+int getAgree(int sock){
+    char agree[5] = {0, };
+    int flag = 0;
+	char send_agree[5];
+
+    while (flag == 0) {
+        printf("Do you agree to provide your information (age, country) to other clients?(Y/N): ");
+        scanf("%s", agree);
+		//printf("agree : kk%skk\n", agree);
+
+        if((strcmp(agree, "y")==0) || (strcmp(agree, "Y")==0)){
+            flag = 1;
+            printf("You agreed to provide your information.\n");
+			strcpy(send_agree, "1");
+			write(sock, send_agree, 1);
+        }
+		else if((strcmp(agree, "N")==0) || (strcmp(agree, "n")==0)){
+            flag = 1;
+            printf("You did not agree to provide your information.\n");
+			strcpy(send_agree, "0");
+			write(sock, send_agree, 1);
+        }
+		else{
+            printf("Invalid choice. Please enter 'Y' or 'N'.\n");
+        }
+    }
+	//printf("I send server : %s\n", send_agree);
+    return 0;
 }

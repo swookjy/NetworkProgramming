@@ -20,6 +20,7 @@ void *handle_out(void *arg);
 //void send_msg(char *msg, int len);
 void error_handling(char *msg);
 void free_naming();
+void GiveClientInfo(int requestclntfd, char* name);
 
 int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
@@ -42,6 +43,8 @@ int main(int argc, char *argv[]){
 	int clnt_adr_sz;
 	pthread_t t_id1;
 	pthread_t t_id2;
+	FILE * fp;
+
 	if(argc != 2) {
 		printf("Usage : %s <port>\n", argv[0]);
 		exit(1);
@@ -65,10 +68,12 @@ int main(int argc, char *argv[]){
 		clnt_adr_sz = sizeof(clnt_adr);
 		clnt_sock = accept(serv_sock, (struct sockaddr*)&clnt_adr,&clnt_adr_sz);
 
-        int name_len, ages_len, country_len;
+        int name_len, ages_len, country_len, agree_len;
         char name[NAME_SIZE] = {0, };
 		char ages[AGE_SIZE] = {0, };
 		char country[COUNTRY_SIZE] = {0, };
+		char agree[1] = {0, };
+		
         unsigned int dup_flag = 0;
 
 		//client의 이름 수신
@@ -95,15 +100,34 @@ int main(int argc, char *argv[]){
             sprintf(clnt_name[clnt_cnt], "%s", name);
             write(clnt_sock, "welcome!\n", 10);
 			
+			fp = fopen("ClientDB.txt", "a");
+			if(fp == NULL)
+				error_handling("database file open error");
+			
 			//get client's age
 			ages_len = read(clnt_sock, ages, sizeof(ages));
 
 			//get client's country
 			country_len = read(clnt_sock, country, sizeof(country));
+
+			//get client's agreement
+			agree_len = read(clnt_sock, agree, 1);
+			printf("%d\n", agree_len);
+			char temp = agree[0];
+			agree[0] = '\0';
+			agree[0] = temp;
+			printf("%c\n", temp);
+			
+			//printf("%c", agreeflag);
             
-			//printf("client %d : %s\n", clnt_sock, clnt_name[clnt_cnt]);
-			printf("client %d : %s %s %s\n", clnt_sock, clnt_name[clnt_cnt], ages, country);
 			clnt_socks[clnt_cnt++] = clnt_sock;
+
+			char client_information[BUF_SIZE] = {0,};
+			sprintf(client_information, "%c\t%d\t%s\t%s\t%s\n", temp, clnt_sock, name, ages, country);
+			fputs(client_information, fp);
+			printf("%s", client_information);
+
+			fclose(fp);
 
 	        //client마다 전송, 수신 thread 생성
 			pthread_create(&t_id1, NULL, handle_in, (void*)&clnt_sock);
@@ -119,6 +143,7 @@ int main(int argc, char *argv[]){
 	}
 
 	close(serv_sock);
+	//fclose(fp);
     free_naming();
 	return 0;
 }
@@ -126,20 +151,38 @@ int main(int argc, char *argv[]){
 void *handle_in(void *arg){
 	int clnt_sock = *((int*)arg);
 	int msg_len = 0;
+	char request_info[BUF_SIZE+BUF_SIZE];
 	
+	//semd all
 	while((msg_len = read(clnt_sock, msg, sizeof(msg)))!=0){
 		if(msg_len == -1)
 			return (void*)-1;
+
 		pthread_mutex_lock(&mutx);
-		str_len = msg_len;
-		//sprintf(echo_msg, msg);
-		strcpy(echo_msg, msg);
-		printf("%s\n", echo_msg);
+
+		//정보 요청
+		if(msg[0] == '[' && msg[msg_len-2] == ']'){
+			sprintf(request_info, "%d REQUEST INFORMATION ABOUT %s", clnt_sock ,msg);
+			msg[msg_len - 1] = '\0';
+			//printf("msg: %s", msg);
+			printf("%s", request_info);
+			strcpy(echo_msg, request_info);
+			
+			GiveClientInfo(clnt_sock, msg);
+		}
+		
+		//일반 chat
+		else{
+			str_len = msg_len;
+			strcpy(echo_msg, msg);
+			printf("%s", echo_msg);
+		}
+
 		pthread_mutex_unlock(&mutx);
 	}
 	
-	pthread_mutex_lock(&mutx);	
 	// remove disconnected client
+	pthread_mutex_lock(&mutx);	
 	for(int i=0; i<clnt_cnt; i++){
 		if(clnt_sock == clnt_socks[i]){
 			while(i++ < clnt_cnt-1)
@@ -148,8 +191,8 @@ void *handle_in(void *arg){
 		}
 	}
 	clnt_cnt--;
-	
 	pthread_mutex_unlock(&mutx);
+
 	close(clnt_sock);
 	return NULL;
 }
@@ -160,55 +203,14 @@ void *handle_out(void *arg){
 		pthread_mutex_lock(&mutx);
 		if(str_len != 0){
 			for(int i=0; i<clnt_cnt; i++)
-				write(clnt_socks[i], msg, str_len);
-
+				write(clnt_socks[i], echo_msg, str_len);
 			str_len = 0;
-		}
+			memset(msg, 0, sizeof(msg));
+		}		
 		pthread_mutex_unlock(&mutx);
 	}
 	return NULL;
 }
-
-
-/*
-void *handle_clnt(void *arg){
-	int clnt_sock = *((int*)arg);
-	int str_len = 0;
-	int i;
-	char msg[BUF_SIZE];
-	
-	while((str_len = read(clnt_sock, msg, sizeof(msg)))!=0)//0이 아니면 반복.
-		send_msg(msg, str_len);
-	
-	pthread_mutex_lock(&mutx);
-	
-	// remove disconnected client
-	for(i=0; i<clnt_cnt; i++){
-		if(clnt_sock == clnt_socks[i]){
-			while(i++ < clnt_cnt-1)
-				clnt_socks[i] = clnt_socks[i+1];
-			break;
-		}
-	}
-	clnt_cnt--;
-	
-	pthread_mutex_unlock(&mutx);
-	close(clnt_sock);
-	return NULL;
-}
-*/
-
-/*
-// send to all
-void send_msg(char *msg, int len){
-	int i;
-	
-	pthread_mutex_lock(&mutx);
-	for(i=0; i<clnt_cnt; i++)
-		write(clnt_socks[i], msg, len);
-	pthread_mutex_unlock(&mutx);
-}
-*/
 
 void error_handling(char *msg){
 	fputs(msg, stderr);
@@ -221,4 +223,52 @@ void free_naming(){
     for(int i=0; i<clnt_cnt; i++){
 		free(clnt_name[i]);
     }
+}
+
+void GiveClientInfo(int requestclntfd, char* req_name) {
+    FILE* fp = fopen("ClientDB.txt", "r");
+    if (fp == NULL) {
+        printf("Failed to open DB txt file\n");
+        return;
+    }
+	
+	char line[BUF_SIZE];
+	
+	// flag to find the name
+	int found = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        int temp;
+        sscanf(line, "%d", &temp); // temp 값 추출
+        
+        int clnt_sock;
+        char name[NAME_SIZE];
+        char ages[AGE_SIZE];
+        char country[COUNTRY_SIZE];      
+		char client_information[BUF_SIZE] = {0,};    
+
+		sscanf(line, "%*d\t%d\t%s\t%s\t%s", &clnt_sock, name, ages, country); // 정보 추출
+		if (strcmp(name, req_name) == 0) {
+            found = 1; // 이름이 일치하는 클라이언트가 발견되었음을 표시
+            if(temp == 0){
+                sprintf(client_information, "%s refused to disclose personal information\n", name);
+            }
+            else if (temp == 1) {
+                printf("Client %d information:\n", clnt_sock);
+                printf("Name: %s\n", name);
+                printf("Age: %s\n", ages);
+                printf("Country: %s\n", country);
+                printf("----------------------\n");
+
+                sprintf(client_information, "%c\t%d\t%s\t%s\t%s\n", temp, clnt_sock, name, ages, country);
+            }
+            write(requestclntfd, client_information, strlen(client_information));
+            break; // 해당 이름의 클라이언트 정보를 찾았으므로 반복문을 종료
+        }
+    }
+	if (!found) {
+        char not_found_msg[] = "No such user exists\n";
+        write(requestclntfd, not_found_msg, sizeof(not_found_msg));
+    }
+    fclose(fp);
 }
